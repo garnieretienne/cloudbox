@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# Init script to expand the root partition of the SD card
+#
+# This script recreate the partition using all the remaining space of the SD
+# card and delete itself before rebooting.
+
+BLOCK_DEVICE="mmcblk1"
+PARTITION_NUMBER="2"
+INIT_FILE_NAME="S02expand-root-partition"
+
+case "$1" in
+	start)
+        PARTITION_START=$(
+			cat /sys/class/block/${BLOCK_DEVICE}p${PARTITION_NUMBER}/start
+		)
+		if [ -z "${PARTITION_START}" ]; then
+			logger -p local0.error \
+				"Root partition expanding: cannot read the first sector number"
+			exit 1
+		fi
+		logger -p local0.info \
+				"Root partition expanding: first sector number is " \
+				"${PARTITION_START}"
+		fdisk "/dev/${BLOCK_DEVICE}" <<-EOF &> /dev/null
+			d
+			$PARTITION_NUMBER
+			n
+			p
+			$PARTITION_NUMBER
+			$PARTITION_START
+
+			w
+		EOF
+		logger -p local0.info \
+				"Root partition expanding: partition expanded"
+		rm -f /etc/init.d/$INIT_FILE_NAME
+		reboot -f
+		;;
+	*)
+		echo "Usage: $0 start" >&2
+		exit 1
+		;;
+esac
+

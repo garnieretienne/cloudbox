@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# Init script to expand the root filesystem
+#
+# This script expand the root (/) filesystem to use all the space available on
+# the partition before deleting itself.
+
+PARTITION_DEVICE="mmcblk1p2"
+INIT_FILE_NAME="S03expand-root-filesystem"
+
+case "$1" in
+	start)
+		resize2fs /dev/$PARTITION_DEVICE &>/dev/null
+		if [ $? -ne 0 ]; then
+			logger -p local0.error "Root filesystem expanding: cannot expand"
+			exit 1
+		fi
+		logger -p local0.info "Root filesystem expanding: filesystem expanded"
+		rm -f /etc/init.d/$INIT_FILE_NAME
+		;;
+	*)
+		echo "Usage: $0 start" >&2
+		exit 1
+		;;
+esac
+
