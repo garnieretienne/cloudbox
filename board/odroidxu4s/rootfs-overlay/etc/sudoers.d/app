@@ -1,0 +1,3 @@
+# Allow sudo command without password for everyone in the app group
+%app	ALL=(ALL) NOPASSWD:ALL
+

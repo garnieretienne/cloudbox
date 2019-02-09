@@ -1,0 +1,6 @@
+# See package/makedevs/README for details
+#
+# This user table is used to define the project related users on the device.
+#
+# <username>	<uid>	<group>	<gid>	<password>	<home>	<shell>	<groups>	<comment>
+app	-1	app	-1	=password	/home/app	/bin/sh	- Main app user
