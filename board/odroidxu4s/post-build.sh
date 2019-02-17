@@ -7,3 +7,6 @@ set -e
 rm -rf ${TARGET_DIR}/var/logs
 rm -rf ${TARGET_DIR}/usr/htdocs
 rm -rf ${TARGET_DIR}/etc/php-fpm.d
+
+# Link nextcloud binary to /usr/bin
+ln -sf /var/www/app/occ ${TARGET_DIR}/usr/bin/occ

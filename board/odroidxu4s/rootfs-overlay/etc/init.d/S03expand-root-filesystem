@@ -17,6 +17,7 @@ case "$1" in
 		fi
 		logger -p local0.info "Root filesystem expanding: filesystem expanded"
 		rm -f /etc/init.d/$INIT_FILE_NAME
+		reboot -f
 		;;
 	*)
 		echo "Usage: $0 start" >&2

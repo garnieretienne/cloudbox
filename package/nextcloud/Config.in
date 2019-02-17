@@ -1,0 +1,8 @@
+config BR2_PACKAGE_NEXTCLOUD
+	bool "nextcloud"
+	help
+	  Nextcloud is a suite of client-server software for creating and using file
+	  hosting services. It is functionally similar to Dropbox, although
+	  Nextcloud is free and open-source, allowing anyone to install and operate
+	  it on a private server.
+
