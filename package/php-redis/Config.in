@@ -1,0 +1,7 @@
+config BR2_PACKAGE_PHP_REDIS
+    bool "php-redis"
+    depends on BR2_PACKAGE_REDIS
+    help
+      PHP extension for interfacing with Redis.
+      
+      https://pecl.php.net/package/redis

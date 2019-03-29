@@ -1,1 +1,2 @@
 source "$BR2_EXTERNAL_CLOUDBOX_PATH/package/nextcloud/Config.in"
+source "$BR2_EXTERNAL_CLOUDBOX_PATH/package/php-redis/Config.in"
