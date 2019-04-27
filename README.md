@@ -1,5 +1,8 @@
 # Complete the installation
 
+Generate SSL certificates:
+`sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/apache2/server.key -out /etc/apache2/server.crt`
+
 Configure nextcloud:
 `occ maintenance:install --database mysql --database-host 127.0.0.1 --database-port 3306 --database-name nextcloud --database-user root --database-pass "" --admin-user root --admin-pass root`
 
