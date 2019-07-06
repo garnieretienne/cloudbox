@@ -1,0 +1,4 @@
+# https://stackoverflow.com/questions/38578190/change-document-root-with-command-lines
+function helper.update_config {
+     sudo sed -i "s|${2}|${3}|g" "${1}"
+}
