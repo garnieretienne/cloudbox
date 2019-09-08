@@ -33,11 +33,21 @@ function create_ssh_access {
     echo -e "${admin_password}\n${admin_password}" | sudo passwd $admin_username
 }
 
+function initialize_hard_drive {
+    sudo mkfs.btrfs --force --label cloudbox /dev/sda &&
+    sudo mount /dev/sda /mnt &&
+    sudo btrfs subvolume create /mnt/data &&
+    sudo chown app:app /mnt/data &&
+    sudo chmod 770 /mnt/data/ &&
+    echo -e "/dev/sda\t/mnt\t\tbtrfs\tdefaults,noauto\t0\t0" | \
+        sudo tee -a /etc/fstab
+}
+
 function install_nextcloud {
     occ maintenance:install --database mysql --database-host 127.0.0.1 \
-        --database-port 3306 --database-name nextcloud4 --database-user root \
+        --database-port 3306 --database-name nextcloud --database-user root \
         --database-pass "" --admin-user "${admin_username}" \
-        --admin-pass "${admin_password}"
+        --admin-pass "${admin_password}" --data-dir /mnt/data
 }
 
 function configure_nextcloud {
@@ -81,6 +91,15 @@ ui.ask_password "Choose an administrator password"; admin_password=$asked
 ui.topic "Rooting the device"
 ui.message "Your box is locked, a root ssh account can be created (advanced)."
 ui.ask_yes_no "Do you want to unlock your device?"; ssh_access=$asked
+if $ssh_access; then
+    ui.task "Creating an SSH access" "create_ssh_access"
+fi
+
+ui.topic "Device configuration"
+ui.message "This step will erase all data on the hard disk."
+ui.message "Ensure no other disks are plugged onto the device."
+ui.continue
+ui.task "Formating the hard drive" "initialize_hard_drive"
 
 ui.topic "Nextcloud configuration"
 ui.task "Installing Nextcloud" "install_nextcloud"
@@ -90,9 +109,6 @@ ui.task "Configuring Nextcloud caching" "configure_nextcloud_caching"
 
 ui.topic "System configuration"
 ui.task "Generating SSL certificates" "generate_ssl_cert"
-if $ssh_access; then
-    ui.task "Creating an SSH access" "create_ssh_access"
-fi
 ui.task "Updating the webserver configuration" "update_vhost"
 
 ui.message "Installation completed."

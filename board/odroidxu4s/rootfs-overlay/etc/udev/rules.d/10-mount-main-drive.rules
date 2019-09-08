@@ -1,0 +1,10 @@
+#
+# Auto mount first detected drive as main drive
+#
+# Attached drives are detected after init scripts are loaded so this rules is 
+# set to auto mount the first connected drive as the main system drive using 
+# fstab configuration.
+
+KERNEL!="sda", GOTO="mount-main-drive-end"
+ACTION=="add", RUN+="/bin/mount /dev/sda"
+LABEL="mount-main-drive-end"

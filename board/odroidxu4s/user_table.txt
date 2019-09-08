@@ -3,5 +3,4 @@
 # This user table is used to define the project related users on the device.
 #
 # <username>	<uid>	<group>	<gid>	<password>	<home>	<shell>	<groups>	<comment>
-#debug -1 app -1 =debug /home/app /bin/bash - Debugging user
 app	-1	app	-1	-	/home/app	/usr/bin/cloudbox-setup	- Main app user
