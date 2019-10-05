@@ -1,3 +1,4 @@
+#!/bin/sh
 #
 # Init script to load modules kernel
 

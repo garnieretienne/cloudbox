@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# Establish an SSH tunnel to a gateway to escape local network
+#
+# Establish an SSH tunnel connection to redirect HTTP traffic from a gateway
+# server to localhost.
+#
+# The remote server must support the following configuration:
+# * `PubkeyAuthentication` set to `yes`
+# * `GatewayPorts` set to `yes`
+# * `ClientAliveInterval` set to `30`
+# * `ClientAliveCountMax` set to `3`
+
+case "$1" in
+  start)
+    if [ -f "/etc/gateway/domainname" ]; then
+        autossh -f -tt -y -M 0 -o "ServerAliveInterval 30" \
+            -o "ServerAliveCountMax 3" -o "StrictHostKeyChecking no" \
+            -o "ExitOnForwardFailure yes" -R 443:localhost:443 \
+            -R 80:localhost:80 -i /etc/gateway/ssh/id_rsa \
+            root@$(cat /etc/gateway/domainname)
+    fi
+	;;
+  stop)
+    killall autossh
+	;;
+  restart|reload)
+	"$0" stop
+	"$0" start
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?
+

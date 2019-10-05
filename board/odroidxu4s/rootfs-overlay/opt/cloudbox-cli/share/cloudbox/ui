@@ -27,6 +27,21 @@ function ui.task {
     fi
 }
 
+function ui.do {
+    echo "   $1 ..."
+    if [ -z "$CLOUDBOX_DEV" ]; then
+        rm -f /tmp/task_stdout /tmp/task_stderr
+        $($2 1>> /tmp/task_stdout 2>> /tmp/task_stderr)
+        return $?
+    fi
+    if [ -n "$CLOUDBOX_DEV" ]; then
+        helper.get_commands $2
+        echo "$commands" | while read cmd; do
+            echo "   $> $cmd"
+        done
+    fi
+}
+
 function ui.ask {
     asked=""
     while [ -z $asked ]; do
@@ -54,7 +69,7 @@ function ui.ask_password {
 }
 
 function ui.message {
-    echo -e " * $1"
+    echo -e " * $@"
 }
 
 function ui.continue {

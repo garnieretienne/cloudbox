@@ -8,6 +8,8 @@ source_dir="$(dirname "$0")/.."
 source $source_dir/share/cloudbox/ui
 source $source_dir/share/cloudbox/helpers
 
+SSH_PUBKEY_URL=http://cloudbox.local/cloudbox.pub
+
 function exit_if_already_installed {
     if [ -f "/var/www/app/config/config.php" ]; then
         echo "Your box is already configured."
@@ -27,10 +29,31 @@ function generate_ssl_cert {
         -subj "/C=FR"
 }
 
+function set_cloudbox_fqdn {
+    echo "$domainname" | sudo tee /etc/gateway/domainname &&
+    sudo chmod 744 /etc/gateway/domainname
+}
+
 function create_ssh_access {
     sudo adduser -h "/home/${admin_username}" -g "Administrator user" \
         -s /bin/bash -G app -S $admin_username &&
     echo -e "${admin_password}\n${admin_password}" | sudo passwd $admin_username
+}
+
+function generate_ssh_host_keys {
+    sudo ssh-keygen -C "cloudbox key" -t rsa -f "/etc/gateway/ssh/id_rsa" -q \
+        -N "" &&
+    sudo chmod 744 /etc/gateway/ssh/id_rsa.pub
+}
+
+function publish_ssh_host_pubkey {
+    sudo cp /etc/gateway/ssh/id_rsa.pub /var/www/setup/cloudbox.pub &&
+    sudo chmod 744 /var/www/setup/cloudbox.pub
+}
+
+function test_gateway_connection {
+    sudo ssh -o "StrictHostKeyChecking no" -o "BatchMode yes" \
+        -i /etc/gateway/ssh/id_rsa root@$domainname exit
 }
 
 function initialize_hard_drive {
@@ -52,6 +75,7 @@ function install_nextcloud {
 
 function configure_nextcloud {
     occ config:system:set trusted_domains 0 --value cloudbox.local &&
+    occ config:system:set trusted_domains 1 --value $domainname &&
     occ --quiet db:convert-filecache-bigint
 }
 
@@ -85,7 +109,16 @@ ui.ask_password "Choose a password for the 'app' SSH user"; app_password=$asked
 ui.task "Securing the 'app' SSH account" "secure_app_account"
 
 ui.topic "Please complete the following setup wizard"
-ui.ask "Choose an administrator username" "admin"; admin_username=$asked
+while true; do
+    ui.ask "Choose an administrator username" "admin"; admin_username=$asked
+    if [ "$admin_username" == "root" ]; then
+        ui.message "The 'root' username is reserved"
+    elif [ "$admin_username" == "app" ]; then
+        ui.message "The 'app' username is reserved"
+    else
+        break
+    fi
+done
 ui.ask_password "Choose an administrator password"; admin_password=$asked
 
 ui.topic "Rooting the device"
@@ -94,6 +127,24 @@ ui.ask_yes_no "Do you want to unlock your device?"; ssh_access=$asked
 if $ssh_access; then
     ui.task "Creating an SSH access" "create_ssh_access"
 fi
+
+ui.topic "Network configuration"
+ui.ask "Enter your cloudbox fully qualified domain name"; domainname=$asked
+ui.task "Setting your cloudbox fully qualified domain name" "set_cloudbox_fqdn"
+ui.task "Generating SSH keys for your gateway server" "generate_ssh_host_keys"
+ui.task "Publishing the SSH public key" "publish_ssh_host_pubkey"
+while true; do
+    ui.message "Please upload this SSH public key to your gateway server"
+    ui.message "Download: ${SSH_PUBKEY_URL}"
+    ui.message "wget ${SSH_PUBKEY_URL} &&" \
+        "ssh-copy-id -f -i cloudbox.pub root@${domainname} &&" \
+        "rm cloudbox.pub"
+    ui.continue
+    if ui.do "Testing the gateway connection" "test_gateway_connection"; then
+        break
+    fi
+    ui.message "Cannot connect to the gateway"
+done
 
 ui.topic "Device configuration"
 ui.message "This step will erase all data on the hard disk."
@@ -106,7 +157,6 @@ ui.task "Installing Nextcloud" "install_nextcloud"
 ui.task "Configuring Nextcloud" "configure_nextcloud"
 ui.task "Configuring Nextcloud caching" "configure_nextcloud_caching"
 
-
 ui.topic "System configuration"
 ui.task "Generating SSL certificates" "generate_ssl_cert"
 ui.task "Updating the webserver configuration" "update_vhost"
@@ -114,6 +164,7 @@ ui.task "Updating the webserver configuration" "update_vhost"
 ui.message "Installation completed."
 ui.message "Your box is configured and will now reboot."
 ui.message "You will be able to reach your box using: https://cloudbox.local"
+ui.message "https://cloudbox.local or https://${domainname}"
 if $ssh_access; then
     ui.message \
         "You can SSH to your box using: ssh ${admin_username}@cloudbox.local"
