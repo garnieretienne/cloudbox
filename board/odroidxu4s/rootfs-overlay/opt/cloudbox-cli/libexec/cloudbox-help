@@ -82,12 +82,12 @@ fi
 
 command="$1"
 case "$command" in
-"") echo "Usage: cloudbox <command> [<args>]
+"") echo "Usage: <command> [<args>]
 
 Some useful cloudbox commands are:
 $(print_summaries)
 
-See 'cloudbox help <command>' for information on a specific command."
+See 'help <command>' for information on a specific command."
 ;;
 *)
   file="$(command_path "$command")"
