@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Usage: cloudbox system:hostname
+# Summary: Manage the device hostname
+# Help: Display or change the device hostname
+#
+# Usage:
+#   cloudbox system:hostname
+#   cloudbox system:hostname update [--hostname <hostname>]
+#
+# Commands:
+#   up, update              # update the system hostname
+#
+# Options:
+#   -n, --hostname          # the new name for your box
+#
+# Example:
+#   $ cloudbox system:hostname update --hostname hostname
+#
+
+source_dir="$(dirname "$0")/.."
+source $source_dir/share/cloudbox/ui
+source $source_dir/share/cloudbox/vars
+source $source_dir/share/cloudbox/helpers
+
+HOSTNAME_FILE="/etc/hostname"
+HOST_FILE="/etc/hosts"
+LOOPBACK_IP="127.0.0.1"
+
+options=$(getopt --options n:: --longoptions hostname:: -- "$@")
+eval set -- "$options"
+
+while [ ! -z "$1" ]; do
+    case "$1" in
+        -n | --hostname) hostname=$2;;
+        --) shift && break;;
+    esac
+    shift
+done
+
+function set_hostname {
+    sudo hostname $hostname &&
+    echo $hostname | sudo tee $HOSTNAME_FILE
+}
+
+function update_hosts_file {
+    helper.update_config $HOST_FILE "${LOOPBACK_IP}.*" \
+        "${LOOPBACK_IP} ${hostname}.local ${hostname} localhost"
+}
+
+function add_domain_to_nextcloud {
+    occ config:system:set trusted_domains 0 --value ${hostname}.local
+}
+
+function reload_local_name {
+    sudo avahi-set-host-name ${hostname}.local
+}
+
+function ui_display_hostname {
+    ui.message "You can access your box using '`hostname -f`' on your network."
+}
+
+function ui_update_hostname {
+
+    if [ -z "$hostname" ]; then
+        ui.ask "Enter a new name for your box" "cloudbox";
+        hostname=$asked
+    fi
+
+    ui.task "setting the new hostname" "set_hostname"
+    ui.task "updating the hosts file" "update_hosts_file"
+    ui.task "reloading the local network name" "reload_local_name"
+
+    if [ -f "$NEXTCLOUD_CONFIG_FILE" ]; then
+        ui.task "updating the nextcloud config file" "add_domain_to_nextcloud"
+    fi
+}
+
+case "$1" in
+    ud | update) ui_update_hostname;;
+    *) ui_display_hostname;;
+esac
+

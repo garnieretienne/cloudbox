@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Usage: cloudbox system:gateway
+# Summary: Manage the gateway
+# Help: Manage the gateway address and keys
+#
+# Usage:
+#   cloudbox system:gateway
+#   cloudbox system:gateway setup [--address <address>]
+#
+# Commands:
+#   se, setup               # setup the gateway
+#   disable                 # disable any configured gateway
+#
+# Options:
+#   -a, --address           # the gateway FQDN or IP address to use
+#
+# Example:
+#   $ cloudbox system:gateway setup --address hostname.domain.tld
+#
+
+source_dir="$(dirname "$0")/.."
+source $source_dir/share/cloudbox/ui
+source $source_dir/share/cloudbox/vars
+source $source_dir/share/cloudbox/helpers
+
+ADDRESS_FILE="/etc/gateway/address"
+PUBKEY_FILE="/etc/gateway/ssh/pubkey"
+PRIVKEY_FILE="/etc/gateway/ssh/privkey"
+
+options=$(getopt --options a:: --longoptions address:: -- "$@")
+eval set -- "$options"
+
+while [ ! -z "$1" ]; do
+    case "$1" in
+        -a | --address) address=$2;;
+        --) shift && break;;
+    esac
+    shift
+done
+
+function update_address {
+    echo "$address" | sudo tee $ADDRESS_FILE
+}
+
+function generate_keys {
+    sudo rm -f "$PUBKEY_FILE" "$PRIVKEY_FILE" &&
+    sudo ssh-keygen -C "`hostname --fqdn`" -f "$PRIVKEY_FILE" -q -N "" &&
+    sudo mv "$PRIVKEY_FILE.pub" "$PUBKEY_FILE"
+    sudo chmod 644 "$PUBKEY_FILE"
+}
+
+function disable_address {
+    sudo rm $ADDRESS_FILE
+}
+
+function remove_keys {
+    sudo rm -f "$PUBKEY_FILE" "$PRIVKEY_FILE"
+}
+
+function reload_gateway {
+    sudo /etc/init.d/S99tunnel restart
+}
+
+function ui_display_gateway {
+
+    if [ -f "$ADDRESS_FILE" ]; then
+        ui.message "Configured gateway: `sudo cat $ADDRESS_FILE`."
+    else
+        ui.message "No gateway is configured for this device."
+    fi
+}
+
+function ui_setup_gateway {
+
+    if [ -z "$address" ]; then
+        ui.ask "Enter the gateway IP address or FQDN"
+        address=$asked
+    fi
+
+    ui.task "updating the gateway address" "update_address"
+    ui.task "generating the gateway secret keys" "generate_keys"
+
+    ui.message "Please register this public key on your gateway:"
+    cat $PUBKEY_FILE
+    ui.continue
+
+    ui.task "connecting to your gateway" "reload_gateway"
+}
+
+function ui_disable_gateway {
+    ui.task "disabling any configured address" "disable_address"
+    ui.task "removing any gateway keys" "remove_keys"
+    ui.task "disconnecting from previous gateway" "reload_gateway"
+}
+
+case "$1" in
+    se | setup) ui_setup_gateway;;
+    di | disable) ui_disable_gateway;;
+    *) ui_display_gateway;;
+esac
+

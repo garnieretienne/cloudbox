@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Usage: cloudbox system:status
+# Summary: Manage the device status
+# Help: Unlock or lock your device creating a root SSH access
+#
+# Usage:
+#   cloudbox system:status
+#   cloudbox system:status unlock <options>
+#   cloudbox system:status lock
+#
+# Commands:
+#   u, unlock               # unlock the device creating a root SSH access
+#   l, lock                 # lock the device deleting the root SSH access
+#
+# Options:
+#   -u, --root-username     # administrator username for the root SSH access
+#   -p, --root-password     # administrator password for the root SSH access
+#
+
+source_dir="$(dirname "$0")/.."
+source $source_dir/share/cloudbox/ui
+source $source_dir/share/cloudbox/vars
+source $source_dir/share/cloudbox/helpers
+
+options=$(getopt --options u::p:: \
+    --longoptions root-username::,root-password:: -- "$@")
+eval set -- "$options"
+
+while [ ! -z "$1" ]; do
+    case "$1" in
+        -u | --root-username) root_username=$2;;
+        -p | --root-password) root_password=$2;;
+        --) shift && break;;
+    esac
+    shift
+done
+
+function create_ssh_access {
+    sudo adduser -g "Administrator account" -h "/home/${root_username}" \
+        -s "/bin/bash" -G "app" -D "${root_username}" &&
+    echo $root_username | sudo tee -a "$LOCK_FILE" &&
+    echo -e "${root_password}\n${root_password}" | sudo passwd $root_username
+}
+
+function delete_ssh_access {
+    sudo deluser --remove-home $root_username && sudo rm "$LOCK_FILE"
+}
+
+function ui_display_system_status {
+
+    if [ -f "$LOCK_FILE" ]; then
+        root_username=`sudo cat "$LOCK_FILE"`
+        ui.message \
+            "Your device is unlocked by the '$root_username' root account."
+    else
+        ui.message "Your device is locked."
+    fi
+}
+
+function ui_unlock_device {
+
+    if [ -f "$LOCK_FILE" ]; then
+        root_username=`sudo cat "${LOCK_FILE}"`
+        ui.message "This device is already unlocked ('${root_username}' user)."
+        exit
+    fi
+
+    if [ -z "$root_username" ]; then
+        ui.ask "Enter a root username" "admin"; root_username=$asked
+    fi
+
+    if [ "$root_username" == "root" ] || [ "$root_username" == "app" ]; then
+        ui.message "You cannot use 'root' or 'app' as your root username."
+        exit
+    fi
+
+    if [ -z "$root_password" ]; then
+        ui.ask_password "Enter a root password"; root_password=$asked
+    fi
+
+    ui.task "creating a root SSH access for '$root_username'" \
+        "create_ssh_access"
+}
+
+function ui_lock_device {
+
+    if ! [ -f "$LOCK_FILE" ]; then
+        ui.message "This device is already locked." && exit
+    fi
+
+    root_username=`sudo cat "${LOCK_FILE}"`
+    ui.task "deleting the root SSH access for '$root_username'" \
+        "delete_ssh_access"
+}
+
+case "$1" in
+    u | unlock) ui_unlock_device;;
+    l | lock) ui_lock_device;;
+    *) ui_display_system_status;;
+esac
+

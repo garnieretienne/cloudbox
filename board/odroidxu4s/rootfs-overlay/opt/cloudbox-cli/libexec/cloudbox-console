@@ -2,7 +2,7 @@
 #
 # Cloudbox console
 #
-# This command will open an interactive console and enable you to execute all 
+# This command will open an interactive console and enable you to execute all
 # cloudbox command directly.
 
 # Add support for ssh command `ssh user@host command`
@@ -11,15 +11,19 @@ if [ "$1" = "-c" ]; then
     echo ""
 fi
 
+clear
 echo "Welcome to the cloudbox console"
 echo "Enter 'help' to list available commands"
 while true; do
-    read -p "> " command
-    if [ "$command" = "exit" ]; then
-        break;
-    elif [ "$command" = "" ]; then
-        continue;
+    echo -ne "\r" && read -e -p "> " command
+    if [[ "$command" == cloudbox* ]]; then
+        command=${command#cloudbox}
     fi
-    cloudbox-${command}
+    if [ "$command" == "exit" ]; then
+        break
+    elif [ "$command" == "" ]; then
+        continue
+    fi
+    cloudbox $command
 done
 

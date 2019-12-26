@@ -26,7 +26,7 @@ export PATH="${libexec_path}:$PATH"
 command="$1"
 case "$command" in
 "" )
-  exec cloudbox-console
+  exec cloudbox-help
   ;;
 "-h" | "--help" )
   exec cloudbox-help

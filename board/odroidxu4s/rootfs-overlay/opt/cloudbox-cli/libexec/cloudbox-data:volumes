@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Usage: cloudbox data:volumes
+# Summary: Manage your cloudbox data volumes
+# Help: Initialize or print the data volumes present on your hard disk
+#
+# Usage:
+#   cloudbox data:volumes
+#   cloudbox data:volumes initialize [--force]
+#
+# Commands:
+#   init, initialize    # format and configure the hard drive
+#
+# Options:
+#   -f, --force         # does not display the warning message
+#
+
+source_dir="$(dirname "$0")/.."
+source $source_dir/share/cloudbox/ui
+source $source_dir/share/cloudbox/vars
+source $source_dir/share/cloudbox/helpers
+
+options=$(getopt --options f --longoptions force -- "$@")
+eval set -- "$options"
+
+while [ ! -z "$1" ]; do
+    case "$1" in
+        -f | --force) force=true;;
+        --) shift && break;;
+    esac
+    shift
+done
+
+function initialize_hard_drive {
+    sudo umount /dev/sda || /bin/true &&
+    sudo mkfs.btrfs --force --label cloudbox $ROOT_VOLUME_DEVICE &&
+    sudo mount /dev/sda $ROOT_VOLUME_PATH &&
+    sudo btrfs subvolume create $ROOT_VOLUME_PATH/$SYSTEM_VOLUME &&
+    sudo btrfs subvolume create $ROOT_VOLUME_PATH/$APP_VOLUME &&
+    sudo btrfs subvolume create $ROOT_VOLUME_PATH/$DATA_VOLUME &&
+    sudo btrfs subvolume create $ROOT_VOLUME_PATH/$DATABASE_VOLUME &&
+    sudo chown -R app:app $ROOT_VOLUME_PATH &&
+    sudo chmod -R 770 $ROOT_VOLUME_PATH
+}
+
+function ui_display_volumes {
+
+    if [ -d $ROOT_VOLUME_PATH/$SYSTEM_VOLUME ] && \
+       [ -d $ROOT_VOLUME_PATH/$APP_VOLUME ] && \
+       [ -d $ROOT_VOLUME_PATH/$DATA_VOLUME ] && \
+       [ -d $ROOT_VOLUME_PATH/$DATABASE_VOLUME ]
+    then
+        ui.list "`ls $ROOT_VOLUME_PATH`"
+    else
+        ui.message "No data volumes detected on '${ROOT_VOLUME_DEVICE}'."
+    fi
+}
+
+function ui_initialize_hard_drive {
+
+    if [ -z "$force" ]; then
+        ui.message "If you continue all data on the disk will be lost."
+        ui.ask_yes_no "Do you want to continue?"; initialize=$asked
+    else
+        initialize=true
+    fi
+
+    if [ "$initialize" == "true" ]; then
+        ui.task "initializing data volumes on '${ROOT_VOLUME_DEVICE}'" \
+            "initialize_hard_drive"
+    else
+        ui.message "Abort." && exit
+    fi
+}
+
+case "$1" in
+    init | initialize) ui_initialize_hard_drive;;
+    *) ui_display_volumes;;
+esac
+

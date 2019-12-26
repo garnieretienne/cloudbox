@@ -1,19 +1,22 @@
+normal=$(tput sgr0)
+bold=$(tput bold)
+
 function helper.get_commands {
     commands=$(type $1 | sed -e '1d;2d;3d;$d' | sed "s/^[ \t]*//")
 }
 
 function ui.topic {
-    echo ">> $1"
+    echo "${bold}${1}${normal}"
 }
 
 function ui.task {
-    printf "   $1 ..."
+    printf "$1 ..."
     if [ -z "$CLOUDBOX_DEV" ]; then
         rm -f /tmp/task_stdout /tmp/task_stderr
         $($2 1>> /tmp/task_stdout 2>> /tmp/task_stderr)
         if [[ $? != 0 ]]; then
             printf " (error)\n"
-            echo "   \$> $2"
+            echo "\$> $2"
             cat /tmp/task_stderr
             exit 1
         fi
@@ -22,13 +25,13 @@ function ui.task {
     if [ -n "$CLOUDBOX_DEV" ]; then
         helper.get_commands $2
         echo "$commands" | while read cmd; do
-            echo "   $> $cmd"
+            echo "$> $cmd"
         done
     fi
 }
 
 function ui.do {
-    echo "   $1 ..."
+    echo "$1 ..."
     if [ -z "$CLOUDBOX_DEV" ]; then
         rm -f /tmp/task_stdout /tmp/task_stderr
         $($2 1>> /tmp/task_stdout 2>> /tmp/task_stderr)
@@ -37,7 +40,7 @@ function ui.do {
     if [ -n "$CLOUDBOX_DEV" ]; then
         helper.get_commands $2
         echo "$commands" | while read cmd; do
-            echo "   $> $cmd"
+            echo "$> $cmd"
         done
     fi
 }
@@ -45,7 +48,7 @@ function ui.do {
 function ui.ask {
     asked=""
     while [ -z $asked ]; do
-        read -p "   $1: (default: ${2:-'-'}) " asked
+        read -p "$1: (default: ${2:-'-'}) " asked
         if [ -z $asked ] && [ -n $2 ]; then
             asked=$2
         fi
@@ -56,7 +59,7 @@ function ui.ask_password {
     local password
     local verified_password
     while true; do
-        read -s -p "   $1: " password
+        read -s -p "$1: " password
         while [ -z $password ]; do
             read -s -p "$(echo -e '\n\b')   $1: " password
         done
@@ -69,20 +72,26 @@ function ui.ask_password {
 }
 
 function ui.message {
-    echo -e " * $@"
+    echo -e "$@"
 }
 
 function ui.continue {
-    read -p " ! Press enter to continue..."
+    read -p "Press enter to continue..."
 }
 
 function ui.ask_yes_no {
     while true; do
-        read -p "   $1 (y/n) " choice
+        read -p "$1 (y/n) " choice
         case "$choice" in
           y|Y ) asked=true && break;;
           n|N ) asked=false && break;;
-          * ) echo -e " ! Use 'y' or 'n' to respond, please try again";;
+          * ) echo -e "Use 'y' or 'n' to respond, please try again";;
         esac
+    done
+}
+
+function ui.list {
+    for item in $1; do
+        echo -e "- $item"
     done
 }

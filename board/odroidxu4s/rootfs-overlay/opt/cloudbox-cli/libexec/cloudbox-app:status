@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Usage: cloudbox app:status
+# Summary: Manage your nextcloud instance
+# Help: This will print the current state of your nextcloud instance
+#
+# Usage:
+#   cloudbox app:status
+#   cloudbox app:status deploy [<options>]
+#
+# Commands:
+#   d, deploy                   # install and configure a nextcloud instance
+#
+# Options:
+#   -u, --admin-username        # Nextcloud admin username
+#   -p, --admin-password        # Nextcloud admin password
+#   -d, --domain-name           # Nextcloud public domain name
+#
+
+source_dir="$(dirname "$0")/.."
+source $source_dir/share/cloudbox/ui
+source $source_dir/share/cloudbox/vars
+source $source_dir/share/cloudbox/helpers
+
+ADMIN_USERNAME="app"
+
+options=$(getopt --options u::,p::,d:: \
+    --longoptions admin-username::,admin-password::,domain:: -- "$@")
+eval set -- "$options"
+
+while [ ! -z "$1" ]; do
+    case "$1" in
+        -u | --admin-username) admin_username=$2;;
+        -p | --admin-password) admin_password=$2;;
+        -d | --domain) domain=$2;;
+        --) shift && break;;
+    esac
+    shift
+done
+
+function initialize_nextcloud {
+    occ maintenance:install --database mysql --database-host 127.0.0.1 \
+        --database-port 3306 --database-name nextcloud --database-user root \
+        --database-pass "" --admin-user "${admin_username}" --admin-pass \
+        "${admin_password}" --data-dir "${NEXTCLOUD_DATA_PATH}"
+    occ db:convert-filecache-bigint --quiet
+}
+
+function configure_nextcloud_domains {
+    echo $domain | sudo tee -a "$PUBLIC_DOMAIN_FILE" &&
+    occ config:system:set trusted_domains 0 --value `hostname`.local &&
+    occ config:system:set trusted_domains 1 --value $domain
+}
+
+function configure_nextcloud_caching {
+    occ config:system:set redis host --value '127.0.0.1' &&
+    occ config:system:set redis port --value '6379' &&
+    occ config:system:set memcache.local --value '\OC\Memcache\Redis' &&
+    occ config:system:set memcache.locking --value '\OC\Memcache\Redis'
+}
+
+function enable_nextcloud_app {
+    sudo ln -sf "$VHOST_APP_FILE" "$VHOST_MAIN_FILE" &&
+    sudo /etc/init.d/S50apache reload
+}
+
+function ui_display_app_status {
+
+    if [ -f $NEXTCLOUD_CONFIG_FILE ]; then
+        ui.message "Your nextcloud instance has already been deployed."
+    else
+        ui.message "Your nextcloud instance has not been deployed yet."
+    fi
+}
+
+function ui_deploy_nextcloud {
+
+    if ! [ -d "$NEXTCLOUD_DATA_PATH" ]; then
+        ui.message "Your data volumes have not been initialized yet." && exit
+    fi
+
+    if [ -f "$NEXTCLOUD_CONFIG_FILE" ]; then
+        ui.message "Your nextcloud instance is already deployed." && exit
+    fi
+
+    if [ -z "$admin_username" ]; then
+        ui.ask "Enter an administrator username" "admin"; admin_username=$asked
+    fi
+
+    if [ -z "$admin_password" ]; then
+        ui.ask_password "Enter an administrator password"; admin_password=$asked
+    fi
+
+    if [ -z "$domain" ]; then
+        ui.ask "Enter your Nextcloud instance public domain name"; domain=$asked
+    fi
+
+    ui.task "initializing nextcloud" "initialize_nextcloud"
+    ui.task "configuring nextcloud domains" "configure_nextcloud_domains"
+    ui.task "configuring nextcloud caching" "configure_nextcloud_caching"
+    ui.task "enabling nextcloud app" "enable_nextcloud_app"
+}
+
+case "$1" in
+    d | deploy) ui_deploy_nextcloud;;
+    *) ui_display_app_status;;
+esac
+

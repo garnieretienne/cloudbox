@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Usage: cloudbox app:domain
+# Summary: Manage your cloudbox public domain name
+# Help: Display or modify your cloudbox public domain name
+#
+# Usage:
+#   cloudbox app:domain
+#   cloudbox app:domain update [--name <domain.tld>]
+#
+# Commands:
+#   u, update                   # update your cloudbox public domain name
+#
+# Options:
+#   -n, --name                  # new domain name
+#
+
+source_dir="$(dirname "$0")/.."
+source $source_dir/share/cloudbox/ui
+source $source_dir/share/cloudbox/vars
+source $source_dir/share/cloudbox/helpers
+
+options=$(getopt --options n:: --longoptions name:: -- "$@")
+eval set -- "$options"
+
+while [ ! -z "$1" ]; do
+    case "$1" in
+        -n | --name) name=$2;;
+        --) shift && break;;
+    esac
+    shift
+done
+
+function set_domain_name {
+    echo $name | sudo tee -a "$PUBLIC_DOMAIN_FILE" &&
+    occ config:system:set trusted_domains 1 --value $name
+}
+
+function ui_domain_update {
+
+    if [ -z "$name" ]; then
+        ui.ask "Enter your cloudbox public domain name"; name=$asked
+    fi
+
+    ui.task "setting your domain name" "set_domain_name"
+}
+
+function ui_domain_display {
+
+    if [ -f "$PUBLIC_DOMAIN_FILE" ]; then
+        ui.list "http://`hostname -f` http://`sudo cat $PUBLIC_DOMAIN_FILE`"
+    else
+        ui.message "You must first deploy your Nextcloud instance."
+     fi
+}
+
+case "$1" in
+    u | update) ui_domain_update;;
+    *) ui_domain_display;;
+esac
+

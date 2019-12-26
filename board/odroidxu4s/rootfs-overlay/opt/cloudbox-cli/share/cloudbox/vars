@@ -1,0 +1,20 @@
+# SYSTEM
+LOCK_FILE="/etc/cloudbox/.unlocked"
+VHOST_MAIN_FILE="/etc/apache2/vhosts/enabled/main.conf"
+VHOST_SETUP_FILE="/etc/apache2/vhosts/available/setup.conf"
+VHOST_APP_FILE="/etc/apache2/vhosts/available/app.conf"
+PUBLIC_DOMAIN_FILE="/etc/cloudbox/domain"
+
+# NEXTCLOUD
+NEXTCLOUD_ROOT_PATH="/var/www/app"
+NEXTCLOUD_DATA_PATH="/mnt/data"
+NEXTCLOUD_CONFIG_FILE="${NEXTCLOUD_ROOT_PATH}/config/config.php"
+
+# DISK
+ROOT_VOLUME_DEVICE="/dev/sda"
+ROOT_VOLUME_PATH="/mnt"
+SYSTEM_VOLUME="system"
+APP_VOLUME="app"
+DATABASE_VOLUME="database"
+DATA_VOLUME="data"
+

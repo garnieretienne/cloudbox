@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Usage: cloudbox system:setup
+# Summary: Setup your cloudbox
+# Help: Setup your cloudbox
+#
+# Usage:
+#   cloudbox system:setup
+#
+
+source_dir="$(dirname "$0")/.."
+source $source_dir/share/cloudbox/ui
+source $source_dir/share/cloudbox/vars
+source $source_dir/share/cloudbox/helpers
+
+clear
+ui.topic "Welcome to your cloudbox"
+ui.message "This is a step by step wizard to configure your box."
+ui.continue
+echo
+
+ui.topic "Securing the administrative account"
+cloudbox system:password change
+
+ui.topic "Configuring your disk"
+cloudbox data:volumes initialize
+
+ui.topic "Configuring your Nextcloud instance"
+cloudbox app:status deploy
+
+ui.ask_yes_no "Are you behind a NAT?"
+if $asked; then
+    ui.topic "Configuring a gateway server"
+    cloudbox system:gateway setup
+fi
+
+echo
+ui.topic "Your cloudbox is configured"
+cloudbox app:domain
+
